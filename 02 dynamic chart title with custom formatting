@@ -1,0 +1,77 @@
+Option Explicit
+
+Function FormatChartTitle(chartName As String, titleText As String, _
+    defaultTextStyle As Range, powerWords As Range)
+
+'Recalculate the formula every time
+Application.Volatile
+
+'Create a variable to reference the chart
+Dim cht As Chart
+
+'Create a variable to reference each cell in the powerWords range
+Dim c As Range
+
+'Create variables to loop through the text
+Dim startPosition As Integer
+Dim chrPosition As Integer
+
+'Set the cht variable equal to the named chart on the same
+'sheet as the formula
+Set cht = Application.Caller.Parent.ChartObjects(chartName).Chart
+
+'Turn the chart title on
+cht.HasTitle = True
+
+'Change the chart title to the text in the cell
+cht.ChartTitle.text = titleText
+
+'Reset the text in the chart to be the same as the defaultTextStyle
+With cht.ChartTitle.Format.TextFrame2.TextRange.Characters.Font
+    .Fill.ForeColor.RGB = defaultTextStyle.Font.Color
+    .Bold = defaultTextStyle.Font.Bold
+    .Italic = defaultTextStyle.Font.Italic
+    .Name = defaultTextStyle.Font.Name
+    .Size = defaultTextStyle.Font.Size
+End With
+
+'Loop through each cell in the powerWords range
+For Each c In powerWords.Cells
+
+    'Start searching for matching words at first position
+    startPosition = 1
+ 
+    'Keep looping until no more matches can be found
+    Do While InStr(startPosition, cht.ChartTitle.Characters.text, _
+        CStr(c.Value), vbTextCompare) > 0
+
+        'Search for the text in the powerWords range
+        chrPosition = InStr(startPosition, cht.ChartTitle.Characters.text, _
+            CStr(c.Value), vbTextCompare)
+ 
+        'If a match is found, format that text
+        If chrPosition > 0 Then
+ 
+            'Format the sections of the chart title which match the
+            'powerWord range
+            With cht.ChartTitle.Format.TextFrame2.TextRange. _
+                Characters(chrPosition, Len(c)).Font
+                .Fill.ForeColor.RGB = c.Font.Color
+                .Bold = c.Font.Bold
+                .Italic = c.Font.Italic
+                .Name = c.Font.Name
+                .Size = c.Font.Size
+            End With
+ 
+        End If
+ 
+        startPosition = chrPosition + 1
+ 
+    Loop
+
+Next c
+
+'Return the result of the chartName
+FormatChartTitle = chartName & " - Formatted"
+
+End Function
