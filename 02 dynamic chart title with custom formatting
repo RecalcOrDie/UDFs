@@ -1,3 +1,10 @@
+' ----------------------------------------------------------------------------------------------------------------------------------
+'   VBA Project:    Create dynamic chart titles with custom formatting
+'   URL:            https://exceloffthegrid.com/create-dynamic-chart-titles/
+'   Author:         Mark Proctor from Excel Off The Grid.
+'   Purpose:        a function to create dynamic chart titles with custom formatting
+' ----------------------------------------------------------------------------------------------------------------------------------
+
 Option Explicit
 
 Function FormatChartTitle(chartName As String, titleText As String, _
