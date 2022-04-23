@@ -1,0 +1,197 @@
+' ----------------------------------------------------------------------------------------------------------------------------------
+'   VBA Project:    UDFs Can Modify Chart Axes
+'   URL 1:          https://exceloffthegrid.com/chart-axis-min-mix/
+'   URL 2:          https://peltiertech.com/chart-udf-control-axis-scale/
+'   Author:         Jon Peltier (URL 2) inspired from Mark Proctor's post (URL 1)
+'   Purpose:        a function that will update the minimum or maximum of a chart axis
+' ----------------------------------------------------------------------------------------------------------------------------------
+Function ScaleChartAxis(SheetName As String, ChartName As String, X_or_Y As Variant, _
+  Primary_or_Secondary As Variant, Optional Minimum As Variant, _
+  Optional Maximum As Variant, Optional MajorUnit As Variant, _
+  Optional MinorUnit As Variant) As Variant
+
+  ' Text values for Minimum, Maximum, MajorUnit, MinorUnit:
+  '   auto, autoscale, default --> use Excel default autoscaling
+  '   null, blank, ignore, skip --> don't change the parameter
+
+  Application.Volatile True
+  
+  If IsMissing(Minimum) Then Minimum = vbNullString
+  If IsMissing(Maximum) Then Maximum = vbNullString
+  If IsMissing(MajorUnit) Then MajorUnit = vbNullString
+  If IsMissing(MinorUnit) Then MinorUnit = vbNullString
+
+  If Len(SheetName) = 0 Then
+    Dim rCaller As Range
+    Set rCaller = Application.Caller
+    SheetName = rCaller.Parent.Name
+  End If
+
+  On Error Resume Next
+  Dim wks As Worksheet
+  Set wks = Worksheets(SheetName)
+  On Error GoTo 0
+  If wks Is Nothing Then
+    On Error Resume Next
+    Dim cht As Chart
+    Set cht = Charts(SheetName)
+    On Error GoTo 0
+    If cht Is Nothing Then
+      Dim sError As String
+      sError = "Sheet '" & SheetName & "' not found"
+      GoTo ErrorFunction
+    End If
+    Dim sReturn As String
+    sReturn = "Chart '" & SheetName & "'" '' jp chart sheet
+  Else
+    If wks.ChartObjects.Count = 0 Then
+      sError = "No charts found on worksheet '" & SheetName & "'"
+      GoTo ErrorFunction
+    End If
+  
+    If Len(ChartName) = 0 Then
+      ChartName = wks.ChartObjects(1).Name
+    End If
+  
+    On Error Resume Next
+    Set cht = wks.ChartObjects(ChartName).Chart
+    On Error GoTo 0
+    If cht Is Nothing Then
+      sError = "Chart '" & ChartName & "' not found on worksheet '" & SheetName & "'"
+      GoTo ErrorFunction
+    End If
+    sReturn = "Sheet '" & SheetName & "' Chart '" & ChartName & "'"
+  End If
+
+  Select Case LCase$(X_or_Y)
+    Case "x", "1"
+      X_or_Y = xlCategory
+      '' but not for non-value axes
+    Case "y", "2"
+      X_or_Y = xlValue
+  End Select
+
+  Select Case LCase$(Primary_or_Secondary)
+    Case "primary", "pri", "1"
+      Primary_or_Secondary = xlPrimary
+    Case "secondary", "sec", "2"
+      Primary_or_Secondary = xlSecondary
+  End Select
+
+  Dim ax As Axis
+  Set ax = cht.Axes(X_or_Y, Primary_or_Secondary)
+
+  If ax.Type = xlCategory Then
+    On Error Resume Next
+    Dim vTestCategory As Variant
+    vTestCategory = ax.MinimumScale
+    Dim iError As Long
+    iError = Err.Number
+    On Error GoTo 0
+    If iError <> 0 Then
+      sError = "Cannot scale a category-type axis"
+      GoTo ErrorFunction
+    End If
+  End If
+
+  If Len(Minimum) = 0 Then
+    Minimum = "null"
+  ElseIf IsNumeric(Minimum) Or IsDate(Minimum) Then
+    Dim dMinimum As Double
+    dMinimum = Minimum
+    Dim bSetMin As Boolean
+    bSetMin = True
+  Else
+    Select Case LCase$(Minimum)
+      Case "auto", "autoscale", "default"
+        ax.MinimumScaleIsAuto = True
+      Case "null", "skip", "ignore", "blank"
+        ' make no change
+      Case vbNullString
+        Minimum = "null"
+        ' make no change
+    End Select
+  End If
+
+  If Len(Maximum) = 0 Then
+    Maximum = "null"
+  ElseIf IsNumeric(Maximum) Or IsDate(Maximum) Then
+    Dim dMaximum As Double
+    dMaximum = Maximum
+    Dim bSetMax As Boolean
+    bSetMax = True
+  Else
+    Select Case LCase$(Maximum)
+      Case "auto", "autoscale", "default"
+        ax.MaximumScaleIsAuto = True
+      Case "null", "skip", "ignore", "blank"
+        ' make no change
+      Case vbNullString
+        Maximum = "null"
+        ' make no change
+    End Select
+  End If
+
+  If bSetMin And bSetMax Then
+    If dMaximum <= dMinimum Then
+      sError = "Maximum must be greater than Minimum"
+      GoTo ErrorFunction
+    End If
+  End If
+
+  If bSetMin Then
+    ax.MinimumScale = dMinimum
+  End If
+
+  If bSetMax Then
+    ax.MaximumScale = dMaximum
+  End If
+
+  If Len(MajorUnit) = 0 Then
+    MajorUnit = "null"
+  ElseIf IsNumeric(MajorUnit) Then
+    If MajorUnit > 0 Then
+      ax.MajorUnit = MajorUnit
+    End If
+  Else
+    Select Case LCase$(MajorUnit)
+      Case "auto", "autoscale", "default"
+        ax.MajorUnitIsAuto = True
+      Case "null", "skip", "ignore", "blank"
+        ' make no change
+      Case vbNullString
+        MajorUnit = "null"
+        ' make no change
+    End Select
+  End If
+
+  If Len(MinorUnit) = 0 Then
+    MinorUnit = "null"
+  ElseIf IsNumeric(MinorUnit) Then
+    If MinorUnit > 0 Then
+      ax.MinorUnit = MinorUnit
+    End If
+  Else
+    Select Case LCase$(MinorUnit)
+      Case "auto", "autoscale", "default"
+        ax.MinorUnitIsAuto = True
+      Case "null", "skip", "ignore", "blank"
+        ' make no change
+      Case vbNullString
+        MinorUnit = "null"
+        ' make no change
+    End Select
+  End If
+
+  ScaleChartAxis = sReturn & " " _
+    & Choose(Primary_or_Secondary, "Primary", "Secondary") & " " _
+    & Choose(X_or_Y, "X", "Y") & " Axis " _
+    & "{" & Minimum & ", " & Maximum & ", " & MajorUnit & ", " & MinorUnit & "}"
+
+ExitFunction:
+  Exit Function
+
+ErrorFunction:
+  ScaleChartAxis = sError
+  GoTo ExitFunction
+End Function
