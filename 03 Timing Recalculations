@@ -1,0 +1,107 @@
+' ----------------------------------------------------------------------------------------------------------------------------------
+'   VBA Project:    Timing Recalculations
+'   Module:         modTimer
+'   Author:         Robert Mundigl
+'   Copyright:      © 2021 by Clear & Simple Analytics
+'                   www.cs-analytics.de
+'                   www.clearlyandsimply.com
+'                   All rights reserved
+'   Last edit:      05.10.2021
+'   Purpose:        Performance Test
+' ----------------------------------------------------------------------------------------------------------------------------------
+
+Option Explicit
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+' Public variable for timing
+Public dblTimerResult As Double
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+' Timer declarations and subs
+' ----------------------------------------------------------------------------------------------------------------------------------
+#If VBA7 Then
+    Private Declare PtrSafe Function QueryPerformanceCounter Lib "kernel32" (x As Currency) As Boolean
+    Private Declare PtrSafe Function QueryPerformanceFrequency Lib "kernel32" (x As Currency) As Boolean
+#Else
+    Private Declare Function QueryPerformanceCounter Lib "kernel32" (x As Currency) As Boolean
+    Private Declare Function QueryPerformanceFrequency Lib "kernel32" (x As Currency) As Boolean
+#End If
+
+Dim m_Time As Double
+Dim m_TimeFreq As Double
+Dim m_TimeStart As Currency
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+Public Property Get Timing() As Double
+' ----------------------------------------------------------------------------------------------------------------------------------
+Dim curTime As Currency
+    QueryPerformanceCounter curTime
+    Timing = (curTime - m_TimeStart) * m_TimeFreq + m_Time
+End Property
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+Public Property Let Timing(ByVal NewValue As Double)
+' ----------------------------------------------------------------------------------------------------------------------------------
+Dim curFreq As Currency
+Dim curOverhead As Currency
+    m_Time = NewValue
+    QueryPerformanceFrequency curFreq
+    m_TimeFreq = 1 / curFreq
+    QueryPerformanceCounter curOverhead
+    QueryPerformanceCounter m_TimeStart
+    m_TimeStart = m_TimeStart + (m_TimeStart - curOverhead)
+End Property
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+Sub RunTimer(Optional varStart As Variant)
+' ----------------------------------------------------------------------------------------------------------------------------------
+    If IsMissing(varStart) Then
+        dblTimerResult = Timing
+    Else
+        Timing = 0
+    End If
+End Sub
+
+' ----------------------------------------------------------------------------------------------------------------------------------
+Sub Timer()
+' Test recalculation performance
+' ----------------------------------------------------------------------------------------------------------------------------------
+Dim dblCalc As Double
+Dim dblRebuild As Double
+
+    On Error GoTo ErrorHandler
+    
+    With Application
+        
+        ' Simple recalculation
+        RunTimer 0
+        .Calculate
+        RunTimer
+        dblCalc = dblTimerResult
+        
+        ' Full rebuild (all formulas are recalculated)
+        .Calculation = xlCalculationManual
+        RunTimer 0
+        .CalculateFullRebuild
+        RunTimer
+        dblRebuild = dblTimerResult
+        
+        ' Display results
+        Call MsgBox("Recalculation: " & vbTab & vbTab & Format(dblCalc, "#,##0.0000") & vbTab & " seconds" & vbNewLine & _
+                    "Full rebuild: " & vbTab & vbTab & Format(dblRebuild, "#,##0.0000") & vbTab & " seconds" & vbNewLine, _
+                    vbInformation, "Recalculation Performance")
+        
+        .Calculation = xlCalculationAutomatic
+    End With
+
+RegularExit:
+    Exit Sub
+    
+ErrorHandler:
+    ' Display the error number and description
+    Call MsgBox("An error occurred. The execution of the code will stop." & _
+                vbCrLf & "Error # " & Err.Number & " : " & Err.Description & vbCrLf, _
+                vbOKOnly Or vbCritical Or vbDefaultButton1, "Error")
+   GoTo RegularExit
+
+End Sub
