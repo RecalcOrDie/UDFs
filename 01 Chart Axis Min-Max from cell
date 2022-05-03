@@ -4,6 +4,10 @@
 '   URL 2:          https://peltiertech.com/chart-udf-control-axis-scale/
 '   Author:         Jon Peltier (URL 2) inspired from Mark Proctor's post (URL 1)
 '   Purpose:        a function that will update the minimum or maximum of a chart axis
+'   Other URLs:     provided by Jon Peltier:
+'                   1. http://dailydoseofexcel.com/archives/2004/12/22/functions-that-do-things/
+'                   2. http://dailydoseofexcel.com/archives/2006/02/05/in-cell-charting/
+'                   3. http://dailydoseofexcel.com/archives/2007/01/12/modifying-shapes-and-charts-with-udfs/
 ' ----------------------------------------------------------------------------------------------------------------------------------
 Function ScaleChartAxis(SheetName As String, ChartName As String, X_or_Y As Variant, _
   Primary_or_Secondary As Variant, Optional Minimum As Variant, _
